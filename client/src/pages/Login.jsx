@@ -1,105 +1,142 @@
 import React, { useState } from "react";
+import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
+ // Centralized Axios instance
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState({});
   const navigate = useNavigate();
 
-  // This is the function where you place the backend connection logic
-  const handleLogin = async (e) => {
-    e.preventDefault(); // Prevents the page from refreshing on submit
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
+  const validate = () => {
+    let Error = {};
+    if (!formData.email) {
+      Error.email = "Email is required";
+    } else if (!/^[\w.]+@gmail\.com$/.test(formData.email)) {
+      Error.email = "Please enter a valid @gmail.com address";
+    }
+    
+    if (!formData.password) {
+      Error.password = "Password is required";
+    }
+
+    setValidationError(Error);
+    return Object.keys(Error).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return toast.error("Please fill all fields correctly");
+
+    setIsLoading(true);
     try {
-      // --- START OF YOUR BACKEND FETCH CODE ---
-      const response = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      // Sending request to http://localhost:4500/api/auth/login
+      const res = await api.post("/login", {
+        email: formData.email,
+        password: formData.password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        // Store the JWT token in the browser's storage
-        localStorage.setItem("token", data.token);
-        // Move the user to the home page
-        navigate("/");
-      } else {
-        // Show an error message if login fails
-        alert(data.msg || "Login failed");
-      }
-      // --- END OF YOUR BACKEND FETCH CODE ---
+      // Store JWT token and user info
+      localStorage.setItem("token", res.data.token);
+      
+      toast.success(`Welcome back, ${res.data.user.fullName}! 💬`);
+      
+      // Redirect to home page
+      navigate("/");
     } catch (error) {
-      console.error("Network error:", error);
-      alert("Could not connect to the server.");
+      // Display error message from backend
+      toast.error(error.response?.data?.msg || "Login failed. Check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
-      <div className="card bg-base-100 w-full max-w-sm shadow-xl border border-base-300">
-        <div className="card-body">
-          <h2 className="card-title text-2xl font-bold text-base-content justify-center mb-4">
-            Welcome Back
-          </h2>
+    <div className="min-h-screen flex items-center justify-center bg-base-200 px-4">
+      <div className="w-full max-w-sm bg-base-100 rounded-3xl shadow-2xl overflow-hidden border border-base-300">
+        
+        {/* Header Section */}
+        <div className="bg-primary text-primary-content text-center py-8">
+          <h1 className="text-3xl font-extrabold tracking-tight">💬 ChatterBox</h1>
+          <p className="text-sm mt-2 opacity-90">Sign in to continue chatting</p>
+        </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">
-                  Email Address
-                </span>
-              </label>
-              <input
-                type="email"
-                placeholder="email@example.com"
-                className="input input-bordered w-full bg-base-100 focus:border-primary"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)} // Update state on type
-                required
-              />
-            </div>
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          
+          <InputField
+            emoji="📧"
+            placeholder="Email Address"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            error={validationError.email}
+          />
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium text-base-content">
-                  Password
-                </span>
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="input input-bordered bg-base-100 focus:border-primary"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)} // Update state on type
-                required
-              />
-            </div>
+          <InputField
+            emoji="🔒"
+            placeholder="Password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            value={formData.password}
+            onChange={handleChange}
+            error={validationError.password}
+          />
 
-            <div className="form-control mt-4">
-              <button
-                type="submit"
-                className="btn btn-primary text-primary-content w-full"
-              >
-                Sign In
-              </button>
-            </div>
-          </form>
+          <div className="text-right">
+            <a href="#" className="text-xs link link-secondary hover:text-primary transition">
+              Forgot Password?
+            </a>
+          </div>
 
-          <div className="text-center mt-6">
-            <span className="text-sm text-base-content/60">New here?</span>
-            <Link
-              to="/register"
-              className="text-sm link link-primary font-semibold ml-1"
-            >
-              Create account
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`w-full py-3 rounded-xl btn btn-primary text-white font-bold text-lg transition duration-300 ${isLoading ? 'loading' : 'hover:scale-105 shadow-lg'}`}
+          >
+            {isLoading ? "Authenticating..." : "Login to Account 🚀"}
+          </button>
+
+          <div className="text-center pt-4 border-t border-base-300">
+            <span className="text-sm text-base-content/60">New to ChatterBox?</span>
+            <Link to="/register" className="text-sm link link-primary font-bold ml-2">
+              Create an Account
             </Link>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
 };
+
+/* Reusable Styled Input Component */
+const InputField = ({ emoji, error, ...props }) => (
+  <div className="flex flex-col gap-1">
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200
+      ${error ? "border-error bg-error/5" : "border-base-300 bg-base-200/50 focus-within:border-primary focus-within:bg-base-100"}`}
+    >
+      <span className="text-xl filter drop-shadow-sm">{emoji}</span>
+      <input 
+        {...props} 
+        className="w-full bg-transparent outline-none text-base-content placeholder:text-base-content/40" 
+      />
+    </div>
+    {error && <p className="text-[10px] text-error font-medium ml-2 animate-pulse">{error}</p>}
+  </div>
+);
 
 export default Login;
