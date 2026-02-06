@@ -1,10 +1,33 @@
-const mongoose = require("mongoose");
-const UserSchema = new mongoose.Schema({
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true },
-    password: { type: String, required: true }
-});
+import mongoose from "mongoose";
 
-const User = mongoose.model("User", UserSchema);
-export default User; // Change from 'export default'
+const userSchema = new mongoose.Schema(
+  {
+    fullName: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    mobileNumber: {
+      type: String,
+    },
+    password: {
+      type: String,
+    },
+    googleId: {
+      type: String,
+    },
+    userType: {
+      type: String,
+      enum: ["google", "regular", "hybrid"],
+      required: true,
+    },
+  },
+  { timestamps: true },
+);
+
+const User = mongoose.model("User", userSchema);
+export default User;

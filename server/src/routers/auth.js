@@ -1,21 +1,13 @@
-const express = require('express');
-const router = express.Router();
-
-// Importing the controllers using require
+import express from "express";
 import {
-    registerUser, // Renamed to match the controller we made earlier
-    loginUser,
-    
-} from "../controllers/userController.js";
+  UserRegister,
+  UserLogin,
+  GoogleUserLogin,
+} from "../controllers/authController.js";
+import { GoogleProtect } from "../middleware/googleMiddleware.js";
 
-const { NewContact } = require('../controllers/publicController.js');
-
-// 1. Authentication Routes
-router.post("/register", registerUser);
-router.post("/login", loginUser);
-
-
-
-
-// Exporting the router properly for CommonJS
+const router = express.Router();
+router.post("/register", UserRegister);
+router.post("/login", UserLogin);
+router.post("/googleLogin", GoogleProtect, GoogleUserLogin);
 export default router;

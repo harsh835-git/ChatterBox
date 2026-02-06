@@ -1,142 +1,182 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { Link, useNavigate } from "react-router-dom";
- // Centralized Axios instance
+import api from "../config/api";
+import { useNavigate } from "react-router-dom";
+import { useGoogleAuth } from "../config/GoogleAuth";
+import { FcGoogle } from "react-icons/fc";
 
 const Login = () => {
+  const navigate = useNavigate();
+
+  const { isLoading, error, isInitialized, signInWithGoogle } = useGoogleAuth();
+
+  const handleGoogleSuccess = async (userData) => {
+    console.log("Google Login Data", userData);
+    setLoading(true);
+    try {
+      const res = await api.post("/auth/googleLogin", userData);
+
+      toast.success(res.data.message);
+
+      // optional: store user or token
+      sessionStorage.setItem("AppUser", JSON.stringify(res.data.data));
+
+      handleClearForm();
+
+      // simple redirect
+      navigate("/dashboard");
+    } catch (error) {
+      console.log(error);
+      toast.error(error?.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const GoogleLogin = () => {
+    signInWithGoogle(handleGoogleSuccess, handleGoogleFailure);
+  };
+
+  const handleGoogleFailure = (error) => {
+    console.error("Google login failed:", error);
+    toast.error("Google login failed. Please try again.");
+  };
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [validationError, setValidationError] = useState({});
-  const navigate = useNavigate();
+  const [Loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validate = () => {
-    let Error = {};
-    if (!formData.email) {
-      Error.email = "Email is required";
-    } else if (!/^[\w.]+@gmail\.com$/.test(formData.email)) {
-      Error.email = "Please enter a valid @gmail.com address";
-    }
-    
-    if (!formData.password) {
-      Error.password = "Password is required";
-    }
-
-    setValidationError(Error);
-    return Object.keys(Error).length === 0;
+  const handleClearForm = () => {
+    setFormData({ email: "", password: "" });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return toast.error("Please fill all fields correctly");
+    setLoading(true);
 
-    setIsLoading(true);
     try {
-      // Sending request to http://localhost:4500/api/auth/login
-      const res = await api.post("/login", {
-        email: formData.email,
-        password: formData.password
-      });
+      const res = await api.post("/auth/login", formData);
 
-      // Store JWT token and user info
-      localStorage.setItem("token", res.data.token);
-      
-      toast.success(`Welcome back, ${res.data.user.fullName}! 💬`);
-      
-      // Redirect to home page
-      navigate("/");
+      toast.success(res.data.message);
+
+      // optional: store user or token
+      sessionStorage.setItem("AppUser", JSON.stringify(res.data.data));
+
+      handleClearForm();
+
+      // simple redirect
+      navigate("/dashboard");
     } catch (error) {
-      // Display error message from backend
-      toast.error(error.response?.data?.msg || "Login failed. Check your credentials.");
+      console.log(error);
+      toast.error(error?.response?.data?.message || "Login failed");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-base-200 px-4">
-      <div className="w-full max-w-sm bg-base-100 rounded-3xl shadow-2xl overflow-hidden border border-base-300">
-        
-        {/* Header Section */}
-        <div className="bg-primary text-primary-content text-center py-8">
-          <h1 className="text-3xl font-extrabold tracking-tight">💬 ChatterBox</h1>
-          <p className="text-sm mt-2 opacity-90">Sign in to continue chatting</p>
+      <div className="w-full max-w-md">
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            {/* Header */}
+            <h2 className="card-title text-3xl justify-center text-primary">
+              Login
+            </h2>
+            <p className="text-center text-base-content/70 mb-6">
+              Welcome back 👋
+            </p>
+
+            {/* Form */}
+            <form
+              onSubmit={handleSubmit}
+              onReset={handleClearForm}
+              className="space-y-4"
+            >
+              <input
+                type="email"
+                name="email"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
+                disabled={Loading}
+                required
+                className="input input-bordered w-full"
+              />
+
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+                disabled={Loading}
+                required
+                className="input input-bordered w-full"
+              />
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="reset"
+                  disabled={Loading}
+                  className="btn btn-secondary btn-outline flex-1"
+                >
+                  Clear
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={Loading}
+                  className="btn btn-primary flex-1"
+                >
+                  {Loading ? "Logging in..." : "Login"}
+                </button>
+              </div>
+            </form>
+
+            {/* Google Login button */}
+
+            <div className="mt-4">
+              {error ? (
+                <button
+                  className="btn btn-outline btn-error font-sans flex items-center justify-center gap-2 w-full"
+                  disabled
+                >
+                  <FcGoogle className="text-xl" />
+                  {error}
+                </button>
+              ) : (
+                <button
+                  onClick={GoogleLogin}
+                  className="btn btn-outline font-sans flex items-center justify-center gap-2 w-full"
+                  disabled={!isInitialized || isLoading}
+                >
+                  <FcGoogle className="text-xl" />
+                  {isLoading
+                    ? "Loading..."
+                    : isInitialized
+                      ? "Continue with Google"
+                      : "Google Auth Error"}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
-          
-          <InputField
-            emoji="📧"
-            placeholder="Email Address"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={formData.email}
-            onChange={handleChange}
-            error={validationError.email}
-          />
-
-          <InputField
-            emoji="🔒"
-            placeholder="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={formData.password}
-            onChange={handleChange}
-            error={validationError.password}
-          />
-
-          <div className="text-right">
-            <a href="#" className="text-xs link link-secondary hover:text-primary transition">
-              Forgot Password?
-            </a>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-3 rounded-xl btn btn-primary text-white font-bold text-lg transition duration-300 ${isLoading ? 'loading' : 'hover:scale-105 shadow-lg'}`}
-          >
-            {isLoading ? "Authenticating..." : "Login to Account 🚀"}
-          </button>
-
-          <div className="text-center pt-4 border-t border-base-300">
-            <span className="text-sm text-base-content/60">New to ChatterBox?</span>
-            <Link to="/register" className="text-sm link link-primary font-bold ml-2">
-              Create an Account
-            </Link>
-          </div>
-        </form>
+        <p className="text-center text-sm text-base-content/60 mt-6">
+          Your data is safe with us 🔐
+        </p>
       </div>
     </div>
   );
 };
-
-/* Reusable Styled Input Component */
-const InputField = ({ emoji, error, ...props }) => (
-  <div className="flex flex-col gap-1">
-    <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200
-      ${error ? "border-error bg-error/5" : "border-base-300 bg-base-200/50 focus-within:border-primary focus-within:bg-base-100"}`}
-    >
-      <span className="text-xl filter drop-shadow-sm">{emoji}</span>
-      <input 
-        {...props} 
-        className="w-full bg-transparent outline-none text-base-content placeholder:text-base-content/40" 
-      />
-    </div>
-    {error && <p className="text-[10px] text-error font-medium ml-2 animate-pulse">{error}</p>}
-  </div>
-);
 
 export default Login;
